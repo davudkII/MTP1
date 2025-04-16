@@ -29,6 +29,7 @@ int main() {
 
     CloseHandle(hParentSem);
     CloseHandle(hChildSem);
-
+    std::cout << "Нажмите Enter для выхода...";
+    std::cin.ignore();
     return 0;
 }
