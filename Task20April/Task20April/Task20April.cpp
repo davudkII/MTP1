@@ -2,22 +2,18 @@
 #include <list>
 #include <string>
 #include <thread>
-#include <mutex>
+#include <shared_mutex>
+#include <chrono>
 #include <atomic>
 #include <memory>
-#include <chrono>
-
-#include <io.h>
-#include <fcntl.h>
-#include <windows.h> 
 
 using namespace std;
 using namespace std::chrono_literals;
 
-// Узел списка с защитой мьютексом
+// Узел списка с защитой блокировкой чтения-записи
 struct ListNode {
     string data;
-    mutex mtx;
+    shared_mutex mtx; // shared_mutex вместо mutex
 
     explicit ListNode(string str) : data(move(str)) {}
 
@@ -32,13 +28,14 @@ struct ListNode {
 
 class ThreadSafeList {
     list<unique_ptr<ListNode>> data_list;
-    mutex global_mtx; // Защищает структуру списка
+    shared_mutex global_mtx; // Защита всей структуры списка
     atomic<bool> running{ true };
 
 public:
     // Добавление строки в список
     void add_string(const string& str) {
-        lock_guard<mutex> lock(global_mtx);
+        unique_lock<shared_mutex> lock(global_mtx); // Эксклюзивная блокировка для записи
+
         if (str.size() > 80) {
             size_t pos = 0;
             while (pos < str.size()) {
@@ -54,19 +51,19 @@ public:
 
     // Вывод текущего состояния списка
     void print() {
-        lock_guard<mutex> lock(global_mtx);
+        shared_lock<shared_mutex> lock(global_mtx); // Разделяемая блокировка для чтения
 
         cout << "\nТекущее состояние списка:" << endl;
         int index = 1;
         for (auto& node : data_list) {
-            lock_guard<mutex> node_lock(node->mtx);
+            shared_lock<shared_mutex> node_lock(node->mtx); // Чтение данных узла
             cout << index++ << ". " << node->data << endl;
         }
     }
 
     // Шаг пузырьковой сортировки
     bool bubble_sort_step() {
-        lock_guard<mutex> lock(global_mtx);
+        unique_lock<shared_mutex> lock(global_mtx); // Эксклюзивная блокировка для записи
 
         bool swapped = false;
         auto it = data_list.begin();
@@ -76,22 +73,12 @@ public:
             if (next_it == data_list.end())
                 break;
 
-            // Избегаем дедлоков: захватываем мьютексы в порядке адресов
-            if (&(*it)->mtx < &(*next_it)->mtx) {
-                lock_guard<mutex> lock1((*it)->mtx);
-                lock_guard<mutex> lock2((*next_it)->mtx);
-                if ((*it)->data > (*next_it)->data) {
-                    swap((*it)->data, (*next_it)->data);
-                    swapped = true;
-                }
-            }
-            else {
-                lock_guard<mutex> lock2((*next_it)->mtx);
-                lock_guard<mutex> lock1((*it)->mtx);
-                if ((*it)->data > (*next_it)->data) {
-                    swap((*it)->data, (*next_it)->data);
-                    swapped = true;
-                }
+            shared_lock<shared_mutex> lock1((*it)->mtx);
+            shared_lock<shared_mutex> lock2((*next_it)->mtx);
+
+            if ((*it)->data > (*next_it)->data) {
+                swap((*it)->data, (*next_it)->data);
+                swapped = true;
             }
 
             ++it;
@@ -104,7 +91,7 @@ public:
     void sort() {
         while (running) {
             {
-                lock_guard<mutex> lock(global_mtx);
+                shared_lock<shared_mutex> lock(global_mtx);
                 if (data_list.size() < 2) {
                     this_thread::sleep_for(100ms);
                     continue;
@@ -114,9 +101,9 @@ public:
             bool swapped;
             do {
                 swapped = bubble_sort_step();
-            } while (swapped && running);
+            } while (swapped && running); // Повторяем пока есть перестановки
 
-            this_thread::sleep_for(500ms); // Лёгкая пауза между полными проходами
+            this_thread::sleep_for(100ms); // Минимальная пауза между проходами
         }
     }
 
@@ -127,13 +114,7 @@ public:
 };
 
 int main() {
-    // Переключаем консоль на UTF-8
-    system("chcp 65001 > nul"); // Смена кодовой страницы на UTF-8
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
-
-    // Устанавливаем глобальную локаль UTF-8 (может потребоваться установка языковых пакетов)
-    setlocale(LC_ALL, "ru"); 
+    setlocale(LC_ALL, "ru");
 
     ThreadSafeList safe_list;
     thread sort_thread(&ThreadSafeList::sort, ref(safe_list));
