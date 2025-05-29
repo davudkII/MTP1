@@ -12,7 +12,7 @@
 #define MAX_CONNECTIONS 510
 #define BUFFER_SIZE 4096
 
-// Функция для установки неblocking режима сокета
+
 void set_nonblocking(SOCKET fd) {
     u_long mode = 1;
     ioctlsocket(fd, FIONBIO, &mode);
