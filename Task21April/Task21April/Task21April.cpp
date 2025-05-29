@@ -32,7 +32,7 @@ class ThreadSafeList {
 public:
     // Добавление строки в начало списка
     void add_string(const string& str) {
-        unique_lock<shared_mutex> lock(global_mtx); // Эксклюзивная блокировка для записи
+        unique_lock<shared_mutex> lock(global_mtx); 
 
         if (str.size() > 80) {
             size_t pos = 0;
@@ -61,7 +61,7 @@ public:
 
     // Шаг пузырьковой сортировки
     bool bubble_sort_step() {
-        unique_lock<shared_mutex> lock(global_mtx); // Эксклюзивная блокировка для записи
+        unique_lock<shared_mutex> lock(global_mtx); 
 
         bool swapped = false;
         auto it = data_list.begin();
