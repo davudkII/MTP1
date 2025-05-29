@@ -31,7 +31,7 @@ struct Philosopher {
 
                     // Ест не более MAX_EAT_TIME_MS миллисекунд
                     while ((high_resolution_clock::now() - start) < milliseconds(MAX_EAT_TIME_MS)) {
-                        // Можно добавить логику здесь, если нужно
+                        
                     }
 
                     cout << "Философ " << id << " закончил есть и освободил вилки." << endl;
@@ -63,7 +63,7 @@ struct Philosopher {
                 }
             }
 
-            // Небольшая пауза, чтобы не грузить процессор слишком сильно
+
             this_thread::sleep_for(1ms);
         }
     }
