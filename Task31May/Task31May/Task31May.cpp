@@ -358,7 +358,7 @@ int main() {
         }
     }
 
-    // Очистка ресурсов (не выполняется здесь, но стоит добавить в реальном проекте)
+    // Очистка ресурсов 
     for (auto& client : clients) {
         if (client.second.server_socket != INVALID_SOCKET)
             closesocket(client.second.server_socket);
